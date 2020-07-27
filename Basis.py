@@ -31,7 +31,7 @@ class Basis_Function:
         summand=(pre*np.einsum('i,j,ij->',normalized,normalized,divisor))**-.5
         self.N=summand
 
-    def overlap(self,other):
+    def overlap(self,other,deriv=(0,0,0)):
         '''Determine overlap between contracted Gaussians via
         Obara-Saika recurrence'''
         distance=self.center-other.center
@@ -42,15 +42,17 @@ class Basis_Function:
             for nb,cb,eb in zip(other.norms,other.coeffs,other.exps):
                 temp=1
                 #Determine x/y/z overlaps based on the shell
-                for x,i,j in zip(distance,self.shell,other.shell):
-                    temp*=oneElec_ObSa(i,j,x,ea,eb)
+                for x,i,j,t in zip(distance,self.shell,other.shell,deriv):
+                    temp*=ObSa_1e(i,j,x,ea,eb,t)
                 value+=na*ca*nb*cb*temp
         return self.N*other.N*value
 
+#    def kinetic(self):
+
 
 #Utility functions
-@lru_cache(maxsize=64)
-def oneElec_ObSa(i,j,x,alpha,beta):
+@lru_cache()
+def ObSa_1e(i, j, x, alpha, beta, t=0):
     '''Obara Saika recurrence for one electron overlap.
     Overlap integrals between Gaussians with different angular
     momentum are related. Can generate higher angular momentum
@@ -60,17 +62,23 @@ def oneElec_ObSa(i,j,x,alpha,beta):
     mu=(alpha*beta)/p
 
     #Base cases
-    if i==0 and j==0:
+    if i==0 and j==0 and t==0:
         return np.sqrt(np.pi/p)*np.exp(-mu*x**2)
-    elif i<0 or j<0:
+    elif i<0 or j<0 or t<0:
         return 0.0
+    elif t>0:
+        upper= 2 * alpha * ObSa_1e(i + 1, j, x, alpha, beta, t - 1)
+        lower= -i * ObSa_1e(i - 1, j, x, alpha, beta, t - 1)
+        return upper+lower
     elif i>0:
-        upper=(-beta/p)*x*oneElec_ObSa(i-1,j,x,alpha,beta)
-        lower=((i-1)*oneElec_ObSa(i-2,j,x,alpha,beta)+
-               j*oneElec_ObSa(i-1,j-1,x,alpha,beta))/(2*p)
+        upper= (-beta/p) * x * ObSa_1e(i - 1, j, x, alpha, beta, t)
+        lower= ((i-1) * ObSa_1e(i - 2, j, x, alpha, beta, t) +
+                j * ObSa_1e(i - 1, j - 1, x, alpha, beta, t) -
+                2 * beta * t * ObSa_1e(i - 1, j, x, alpha, beta, t - 1)) / (2 * p)
         return upper+lower
     elif j>0:
-        upper=(alpha/p)*x*oneElec_ObSa(i,j-1,x,alpha,beta)
-        lower=(i*oneElec_ObSa(i-1,j-1,x,alpha,beta)+
-               (j-1)*oneElec_ObSa(i,j-2,x,alpha,beta))/(2*p)
+        upper= (alpha/p) * x * ObSa_1e(i, j - 1, x, alpha, beta, t)
+        lower= (i * ObSa_1e(i - 1, j - 1, x, alpha, beta, t) +
+                (j-1) * ObSa_1e(i, j - 2, x, alpha, beta, t) +
+                2 * alpha * t * ObSa_1e(i, j - 1, alpha, beta, t - 1)) / (2 * p)
         return upper+lower

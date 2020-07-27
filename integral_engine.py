@@ -36,12 +36,25 @@ def _expandShell(shell):
     return expanded
 
 def formS(basis_funcs):
+    def temp(bra,ket):
+        return bra.overlap(ket)
+    return __formMat(basis_funcs,temp)
+
+def formT(basis_funcs):
+    def kinetic(bra,ket):
+        return -.5*(bra.overlap(ket,deriv=(2,0,0))+
+                    bra.overlap(ket,deriv=(0,2,0))+
+                    bra.overlap(ket,deriv=(0,0,2)))
+
+    return __formMat(basis_funcs,kinetic)
+
+##Utility functions
+def __formMat(basis_funcs,method):
     nbasis=len(basis_funcs)
-    S=np.zeros((nbasis,nbasis))
+    mat=np.zeros((nbasis,nbasis))
 
     for i,bra in enumerate(basis_funcs):
         for j,ket in enumerate(basis_funcs[:i+1]):
-            S[i,j]=bra.overlap(ket)
-            S[j,i]=S[i,j]
-    return S
-
+            mat[i,j]=method(bra,ket)
+            mat[j,i]=mat[i,j]
+    return mat

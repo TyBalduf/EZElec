@@ -18,6 +18,9 @@ basis_funcs=ie.initialize(geom,bname)
 S=ie.formS(basis_funcs)
 print(S)
 
+T=ie.formT(basis_funcs)
+print(T)
+
 '''
 SCF loops here
 '''
