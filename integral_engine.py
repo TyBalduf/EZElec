@@ -48,13 +48,44 @@ def formT(basis_funcs):
 
     return __formMat(basis_funcs,kinetic)
 
+def formMu(basis_funcs):
+    cart=((1,0,0),(0,1,0),(0,0,1))
+    multi=3*[(True, True, True)]
+    mu=__listMats(basis_funcs,cart,multi)
+    return mu
+
+def formP(basis_funcs):
+    cart = ((1,0,0),(0,1,0),(0,0,1))
+    P=__listMats(basis_funcs,cart,phase=-1)
+    P=[-p for p in P]
+    return P
+
+def formL(basis_funcs):
+    cart = ((0,1,1),(1,0,1),(1,1,0))
+    multi =((False,False,True),(True,False,False),(False,True,False))
+    first=__listMats(basis_funcs,cart,multi,phase=-1)
+
+    multi = ((False, True, False), (False, False, True), (True, False, False))
+    second=__listMats(basis_funcs,cart,multi,phase=-1)
+
+    L=[l2-l1 for l1,l2 in zip(first,second)]
+    return L
+
 ##Utility functions
-def __formMat(basis_funcs,method):
+def __formMat(basis_funcs,method,phase=1):
     nbasis=len(basis_funcs)
     mat=np.zeros((nbasis,nbasis))
 
     for i,bra in enumerate(basis_funcs):
         for j,ket in enumerate(basis_funcs[:i+1]):
             mat[i,j]=method(bra,ket)
-            mat[j,i]=mat[i,j]
+            mat[j,i]=phase*mat[i,j]
     return mat
+
+def __listMats(basis_funcs,cart,multi=3*[(False,False,False)],phase=1):
+    mats=[]
+    for c,m in zip(cart,multi):
+        def method(bra,ket):
+            return bra.overlap(ket,deriv=c,multi=m)
+        mats.append(__formMat(basis_funcs,method,phase=phase))
+    return mats

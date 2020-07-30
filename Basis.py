@@ -31,9 +31,11 @@ class Basis_Function:
         summand=(pre*np.einsum('i,j,ij->',normalized,normalized,divisor))**-.5
         self.N=summand
 
-    def overlap(self,other,deriv=(0,0,0)):
+    def overlap(self,other,deriv=(0,0,0),multi=(False,False,False)):
         '''Determine overlap between contracted Gaussians via
-        Obara-Saika recurrence'''
+        Obara-Saika recurrence. Can do standard overlap, as well as
+        derivatives (specify deriv) and multipoles (specify deriv and
+        charge center in multi'''
         distance=self.center-other.center
 
         value=0
@@ -41,22 +43,23 @@ class Basis_Function:
         for na,ca,ea in zip(self.norms,self.coeffs,self.exps):
             for nb,cb,eb in zip(other.norms,other.coeffs,other.exps):
                 temp=1
+                P=(ea*self.center+eb*other.center)/(ea+eb)
+                x_c=[P[i] if multi[i] else None for i in range(3)]
+
                 #Determine x/y/z overlaps based on the shell
-                for x,i,j,t in zip(distance,self.shell,other.shell,deriv):
-                    temp*=ObSa_1e(i,j,x,ea,eb,t)
+                for vals in zip(distance,self.shell,other.shell,deriv,x_c):
+                    temp*=ObSa_1e(ea, eb, *vals)
                 value+=na*ca*nb*cb*temp
         return self.N*other.N*value
 
-#    def kinetic(self):
 
 
 #Utility functions
 @lru_cache()
-def ObSa_1e(i, j, x, alpha, beta, t=0):
+def ObSa_1e(alpha, beta, x, i=0, j=0, t=0, x_c=None):
     '''Obara Saika recurrence for one electron overlap.
-    Overlap integrals between Gaussians with different angular
-    momentum are related. Can generate higher angular momentum
-    from the base case of s-type overlap.'''
+    Can generate higher angular momentum from the base
+    case of s-type overlap.'''
 
     p=alpha+beta
     mu=(alpha*beta)/p
@@ -67,18 +70,31 @@ def ObSa_1e(i, j, x, alpha, beta, t=0):
     elif i<0 or j<0 or t<0:
         return 0.0
     elif t>0:
-        upper= 2 * alpha * ObSa_1e(i + 1, j, x, alpha, beta, t - 1)
-        lower= -i * ObSa_1e(i - 1, j, x, alpha, beta, t - 1)
+        if x_c is None:
+            upper= 2 * alpha * ObSa_1e(alpha, beta, x, i + 1, j, t-1)
+            lower= -i * ObSa_1e(alpha, beta, x, i-1, j, t-1)
+        else:
+            upper= x_c*ObSa_1e(alpha, beta, x, i, j, t-1, x_c)
+            lower=(i * ObSa_1e(alpha, beta, x, i-1, j, t-1, x_c) +
+                   j * ObSa_1e(alpha, beta, x, i, j-1, t-1, x_c) +
+                   (t-1) * ObSa_1e(alpha, beta, x, i, j, t-2, x_c))/(2*p)
         return upper+lower
     elif i>0:
-        upper= (-beta/p) * x * ObSa_1e(i - 1, j, x, alpha, beta, t)
-        lower= ((i-1) * ObSa_1e(i - 2, j, x, alpha, beta, t) +
-                j * ObSa_1e(i - 1, j - 1, x, alpha, beta, t) -
-                2 * beta * t * ObSa_1e(i - 1, j, x, alpha, beta, t - 1)) / (2 * p)
+        upper= (-beta/p) * x * ObSa_1e(alpha, beta, x, i - 1, j, t, x_c)
+        lower= ((i-1) * ObSa_1e(alpha, beta, x, i - 2, j, t, x_c) +
+                j * ObSa_1e(alpha, beta, x, i - 1, j - 1, t, x_c))/(2*p)
+        if x_c is None:
+            lower+= -2*beta*t*ObSa_1e(alpha, beta, x, i-1, j, t-1)/(2*p)
+        else:
+            lower+= t*ObSa_1e(alpha, beta, x, i-1, j, t-1, x_c)/(2*p)
         return upper+lower
     elif j>0:
-        upper= (alpha/p) * x * ObSa_1e(i, j - 1, x, alpha, beta, t)
-        lower= (i * ObSa_1e(i - 1, j - 1, x, alpha, beta, t) +
-                (j-1) * ObSa_1e(i, j - 2, x, alpha, beta, t) +
-                2 * alpha * t * ObSa_1e(i, j - 1, alpha, beta, t - 1)) / (2 * p)
+        upper= (alpha/p) * x * ObSa_1e(alpha, beta, x, i, j-1, t, x_c)
+        lower= (i * ObSa_1e(alpha, beta, x, i - 1, j - 1, t, x_c) +
+               (j-1) * ObSa_1e(alpha, beta, x, i, j - 2, t, x_c))/(2*p)
+        if x_c is None:
+            lower+= 2*alpha*t*ObSa_1e(alpha, beta, x, i, j-1, t-1)/(2*p)
+        else:
+            lower+= t*ObSa_1e(alpha, beta, x, i, j-1, t-1, x_c)/(2*p)
         return upper+lower
+
