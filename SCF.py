@@ -8,8 +8,8 @@ geom is nested list of element/coordinates
 bname is name of basis file to read
 '''
 
-geom=[['H',0.0,0.0,-0.375],['H',0.0,0.0,0.375]]#,['H',0.0,-0.375,0.0],['H',0.0,0.375,0.0]]
-#geom=[['O',0.0,0.0,-0.375],['O',0.0,0.0,0.375]]
+#geom=[['H',0.0,0.0,-0.375],['H',0.0,0.0,0.375]]#,['H',0.0,-0.375,0.0],['H',0.0,0.375,0.0]]
+geom=[['O',0.0,0.0,-0.375],['O',0.0,0.0,0.375]]
 bname='sto-3g'
 
 #Generate list of basis functions
@@ -36,6 +36,9 @@ print("Angular momentum")
 L=ie.formL(basis_funcs)
 print(L)
 
+print("Electron-Nuclear attraction")
+V=ie.formNucAttract(basis_funcs,geom)
+print(V)
 
 '''
 SCF loops here

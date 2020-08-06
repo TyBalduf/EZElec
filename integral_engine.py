@@ -4,6 +4,12 @@ import json
 import Basis as ba
 import numpy as np
 
+#Constants
+ANG_TO_BOHR = 1.8897261245
+##Dictionary of element atomic numbers
+__ATOMIC_CHARGES={"H":1,"He":2,
+                  "Li":3,"Be":4,"B":5,"C":6,"N":7,"O":8,"F":9,"Ne":10}
+
 def initialize(geometry,basis_name):
     #Read saved basis info
     file=f"BasisSets\\{basis_name.lower()}.txt"
@@ -15,6 +21,7 @@ def initialize(geometry,basis_name):
     ##Read through all atoms to get element and coordinates
     for atom in geometry:
         elem,*coord=atom
+        coord=[c*ANG_TO_BOHR for c in coord]
         vals=basis_dict[elem]
         ##Get coefficients, exponents, and shell of each contracted orbital
         for c,e,shell in zip(vals['coeffs'],vals["exponents"],vals["shells"]):
@@ -34,6 +41,11 @@ def _expandShell(shell):
               }
     expanded=expansion[shell]
     return expanded
+
+def getCharges(geom,chargeValues=__ATOMIC_CHARGES):
+    charges=[chargeValues[g[0]] for g in geom]
+    return charges
+
 
 def formS(basis_funcs):
     def temp(bra,ket):
@@ -70,6 +82,24 @@ def formL(basis_funcs):
 
     L=[l2-l1 for l1,l2 in zip(first,second)]
     return L
+
+def formNucAttract(basis_funcs,geom):
+    potentials=formPotential(basis_funcs,geom)
+    charges=getCharges(geom)
+    V=np.einsum('i,ijk->jk',charges,potentials)
+    return V
+
+def formPotential(basis_funcs,geom):
+    nbasis=len(basis_funcs)
+    vals=np.zeros((len(geom),nbasis,nbasis))
+
+    for c,coord in enumerate(geom):
+        cent=[val*ANG_TO_BOHR for val in coord[1:]]
+        def attract(bra,ket):
+            return bra.Coulomb_1e(ket,cent)
+        vals[c]=__formMat(basis_funcs,attract)
+
+    return vals
 
 ##Utility functions
 def __formMat(basis_funcs,method,phase=1):
