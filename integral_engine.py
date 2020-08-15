@@ -3,6 +3,18 @@
 import json
 import Basis as ba
 import numpy as np
+from typing import List,Tuple,Dict
+import time
+
+def timer(func):
+    """Prints the time it took a function to run"""
+    def new_func(*args,**kwargs):
+        t0=time.time()
+        val=func(*args,**kwargs)
+        t1=time.time()
+        print(f"{func.__name__} took {t1-t0} seconds")
+        return val
+    return new_func
 
 #Constants
 ANG_TO_BOHR = 1.8897261245
@@ -32,22 +44,26 @@ def initialize(geometry,basis_name):
                 bas_funcs.append(ba.Basis_Function(coord,**temp))
     return bas_funcs
 
-def _expandShell(shell):
-    '''Read shell label, convert to momentum quantum
-    numbers of all orbitals in that shell'''
+def _expandShell(shell: str)->List[Tuple[int,int,int]]:
+    """Convert label to ang momentum of all orbitals in that shell
+
+    :param shell: Label of subshell (currently up to D)
+    :returns: x/z/y angular momentum of each orbital in the subshell
+    """
+
     expansion={'S':[(0,0,0)],
                'P':[(1,0,0),(0,1,0),(0,0,1)],
-               'D':[(2,0,0),(1,1,0),(1,0,1),(0,2,0),(0,1,1),(0,0,2)]
+               'D':[(2,0,0),(0,2,0),(0,0,2),(1,1,0),(1,0,1),(0,1,1)]
               }
     expanded=expansion[shell]
     return expanded
 
-def getCharges(geom,chargeValues=__ATOMIC_CHARGES):
+def getCharges(geom: List, chargeValues: Dict = __ATOMIC_CHARGES) -> List:
     charges=[chargeValues[g[0]] for g in geom]
     return charges
 
 
-def formS(basis_funcs):
+def formS(basis_funcs: List[ba.Basis_Function]):
     def temp(bra,ket):
         return bra.overlap(ket)
     return __formMat(basis_funcs,temp)
@@ -101,6 +117,39 @@ def formPotential(basis_funcs,geom):
 
     return vals
 
+@timer
+def form2e(basis_funcs:List[ba.Basis_Function],thresh=1e-12):
+    nbasis=len(basis_funcs)
+    tensor=np.zeros((nbasis,)*4)
+
+    distributions=__formDistribs(basis_funcs)
+    ##Form diagonal integrals for Cauchy-Schwarz
+    diag={2*d.indices:d.interact(d)**.5
+          for d in distributions}
+
+    neg=0
+    for i,P in enumerate(distributions):
+        Plab=2*P.indices
+        for j,Q in enumerate(distributions[:i+1]):
+            Qlab=2*Q.indices
+            label=P.indices+Q.indices
+            indices=__tenSymm(label)
+
+            if P.indices==Q.indices:
+                value=diag[label]
+            elif (diag[Plab]*diag[Qlab])<thresh:
+#                print(f"Neglected int {label}")
+                neg+=1
+                continue
+            else:
+                value=P.interact(Q)
+            for ind in indices:
+                tensor[ind]=value
+    unique=len(distributions)*(len(distributions)+1)/2
+    print(f"{100*neg/unique:5.2f}% of unique integrals neglected")
+    return tensor
+
+
 ##Utility functions
 def __formMat(basis_funcs,method,phase=1):
     nbasis=len(basis_funcs)
@@ -119,3 +168,21 @@ def __listMats(basis_funcs,cart,multi=3*[(False,False,False)],phase=1):
             return bra.overlap(ket,deriv=c,multi=m)
         mats.append(__formMat(basis_funcs,method,phase=phase))
     return mats
+
+
+def __formDistribs(basis_funcs):
+    distribs=[]
+    for i,mu in enumerate(basis_funcs):
+        for j,nu in enumerate(basis_funcs[:i+1]):
+            distribs.append(ba.ChargeDist(mu,nu,(i,j)))
+    return distribs
+
+
+def __tenSymm(label):
+    """Generate list of equivalent indices for 2e tensor"""
+    equivalent=[(0,1,2,3),(1,0,2,3),(1,0,3,2),(0,1,3,2),
+                (2,3,0,1),(3,2,0,1),(3,2,1,0),(2,3,1,0)]
+    indices=[tuple(label[i] for i in e) for e in equivalent]
+    return indices
+
+
