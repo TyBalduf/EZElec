@@ -9,8 +9,9 @@ bname is name of basis file to read
 '''
 
 #geom=[['H',0.0,0.0,-0.375],['H',0.0,0.0,0.375],['H',0.0,-0.375,0.0],['H',0.0,0.375,0.0]]
-geom=[['O',0.0,0.0,-1.375],['O',0.0,0.0,1.375]]
-bname='sto-3g'
+#geom=[['O',0.0,0.0,-1.375],['O',0.0,0.0,1.375]]
+geom=[['He',0.0,0.0,0.0]]
+bname='test'
 
 #Generate list of basis functions
 basis_funcs=ie.initialize(geom,bname)
