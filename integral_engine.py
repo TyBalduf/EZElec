@@ -136,7 +136,7 @@ def form2e(basis_funcs:List[ba.Basis_Function],thresh=1e-12):
             indices=__tenSymm(label)
 
             if P.indices==Q.indices:
-                value=diag[label]
+                value=diag[label]**2
             elif (diag[Plab]*diag[Qlab])<thresh:
 #                print(f"Neglected int {label}")
                 neg+=1
