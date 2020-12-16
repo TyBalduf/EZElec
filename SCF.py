@@ -1,50 +1,49 @@
 # Performs RHF
 import integral_engine as ie
 
-'''
-Molecular input here
-made up example for now
-geom is nested list of element/coordinates
-bname is name of basis file to read
-'''
+def genInts(geom,bname,properties=False):
+    #Generate list of basis functions
+    basis_funcs=ie.initialize(geom,bname)
 
-#geom=[['H',0.0,0.0,-0.375],['H',0.0,0.0,0.375],['H',0.0,-0.375,0.0],['H',0.0,0.375,0.0]]
-#geom=[['O',0.0,0.0,-1.375],['O',0.0,0.0,1.375]]
-geom=[['He',0.0,0.0,0.0]]
-bname='test'
+    intDict={}
+    #Generate integrals from the basis function list
+    print("Overlap")
+    intDict['S']=ie.formS(basis_funcs)
+    print(intDict['S'])
 
-#Generate list of basis functions
-basis_funcs=ie.initialize(geom,bname)
+    print("Kinetic energy")
+    intDict['T']=ie.formT(basis_funcs)
+    print(intDict['T'])
 
-#Generate integrals from the basis function list
-print("Overlap")
-S=ie.formS(basis_funcs)
-print(S)
+    print("Electron-Nuclear attraction")
+    intDict['V']=ie.formNucAttract(basis_funcs,geom)
+    print(intDict['V'])
 
-print("Kinetic energy")
-T=ie.formT(basis_funcs)
-print(T)
+    intDict['Pi']=ie.form2e(basis_funcs)
+    print("Two-electron Integrals")
+    print(intDict['Pi'])
 
-print("dipoles")
-Mu=ie.formMu(basis_funcs)
-print(Mu)
+    if properties:
+        print("dipoles")
+        intDict['Mu'] = ie.formMu(basis_funcs)
+        print(intDict['Mu'])
 
-print("Momentum")
-P=ie.formP(basis_funcs)
-print(P)
+        print("Momentum")
+        intDict['P'] = ie.formP(basis_funcs)
+        print(intDict['P'])
 
-print("Angular momentum")
-L=ie.formL(basis_funcs)
-print(L)
+        print("Angular momentum")
+        intDict['L'] = ie.formL(basis_funcs)
+        print(intDict['L'])
 
-print("Electron-Nuclear attraction")
-V=ie.formNucAttract(basis_funcs,geom)
-print(V)
+    return intDict
 
-print("Two-electron Integrals")
-Pi=ie.form2e(basis_funcs)
-print(Pi)
+def calc(geom=[['H',0.0,0.0,0.0]],bname='test'):
+    Integrals=genInts(geom,bname)
 
-'''
-SCF loops here
-'''
+    SCF(**Integrals)
+
+
+
+def SCF(S,T,V,Pi,**kwargs):
+    pass
