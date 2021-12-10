@@ -1,9 +1,14 @@
-import SCF
+from Methods import SCF
 
 #geom=[['H',0.0,0.0,-0.375],['H',0.0,0.0,0.375],['H',0.0,-0.375,0.0],['H',0.0,0.375,0.0]]
 #geom=[['O',0.0,0.0,-1.375],['O',0.0,0.0,1.375]]
+#geom=[['H',0.0,0.0,-0.375],['H',0.0,0.0,0.375]]
+geom=[['He',0.0,0.0,0.0],['H',0.0,0.0,0.774292095]]
 
-params={'geom':[['H',0.0,0.0,-0.375],['H',0.0,0.0,0.375]],
-        'bname':"sto-3g"}
+params={'geom':geom,
+        'basis':"sto-3g",
+        "charge":1}
 
-C,E=SCF.calc(**params)
+solution=SCF(**params)
+P=[[0.95554, 0.03986],[0.03986,0.00166]]
+E,C=solution.solve(guess=P)

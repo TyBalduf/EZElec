@@ -44,6 +44,16 @@ def initialize(geometry,basis_name):
                 bas_funcs.append(ba.Basis_Function(coord,**temp))
     return bas_funcs
 
+def elecCount(geometry,charge=0):
+    """Returns the number of electrons in a molecule"""
+    count=0
+    for atom in geometry:
+        elem,*_=atom
+        count+=__ATOMIC_CHARGES[elem]
+    count-=charge
+
+    return count
+
 def _expandShell(shell: str)->List[Tuple[int,int,int]]:
     """Convert label to ang momentum of all orbitals in that shell
 
