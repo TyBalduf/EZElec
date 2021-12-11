@@ -10,5 +10,5 @@ params={'geom':geom,
         "charge":1}
 
 solution=SCF(**params)
-P=[[0.95554, 0.03986],[0.03986,0.00166]]
+P=[[0.95554*2, 0.03986*2],[0.03986*2,0.00166*2]]
 E,C=solution.solve(guess=P)

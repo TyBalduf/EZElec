@@ -2,14 +2,13 @@
 import integral_engine as ie
 import numpy as np
 from scipy.linalg import sqrtm
+from Molecule import Molecule
 
 class SCF:
-    def __init__(self, geom, basis,charge=0,props=False):
-        self.molecule = geom
-        self.basis=basis
-        self.charge=charge
+    def __init__(self, geom, basis, charge=0, props=False):
+        self.molecule = Molecule(geom,charge)
+        self.basis={"name":basis,"functions":ie.initialize(self.molecule,basis)}
         self.ints= self.genInts(properties=props)
-        self.nelec=ie.elecCount(self.molecule,charge=self.charge)
         self.E=None
         self.C=None
         self.epsilon=None
@@ -22,7 +21,7 @@ class SCF:
         as well.
         """
         #Generate list of basis functions
-        basis_funcs=ie.initialize(self.molecule,self.basis)
+        basis_funcs=self.basis["functions"]
 
         intDict={}
         #Generate integrals from the basis function list
@@ -38,14 +37,21 @@ class SCF:
 
         return intDict
 
+
     def solve(self,max_iter=100,thresh=1e-8,guess=None):
+        """Solves the SCF equations.
+
+        The Fock and density matrices are the total ones, not just the
+        alpha spin. This should functionally when passing in a
+        guess density.
+        """
         T=self.ints['T']
         V=self.ints['V']
         S=self.ints['S']
         Pi=self.ints['Pi']
 
         # Determine number of occupied orbitals
-        Nocc = self.nelec//2
+        Nocc = self.molecule.nelec//2
         #Form core Hamiltonian
         h=T-V
 
@@ -60,20 +66,24 @@ class SCF:
         else:
             P_old=np.array(guess)
 
+        #Calculate nuclear repulsion energy
+        E_nuc=self.molecule.getNucRepulsion()
+
         #SCF loop
         while (i<max_iter and conv>thresh):
             #Form Fock matrix, orthogonalize, diagonalize
             J=np.einsum('ijkl,kl->ij',Pi,P_old)
             K=np.einsum('iljk,kl->ij',Pi,P_old)
-            F=(h+2*J-K)
+            F=(h+J-0.5*K)
 
-            E=np.einsum('ij,ij->',P_old,(F+h))
+            E=np.einsum('ij,ij->',P_old,.5*(F+h))+E_nuc
             F=X.T@F@X
             e,C=np.linalg.eigh(F)
+            print(E)
 
             #Unorthogonalize and form new density matrix
             C=X@C
-            P_new=np.einsum('pi,qi->pq', C[:,:Nocc], C[:,:Nocc])
+            P_new=2*np.einsum('pi,qi->pq', C[:,:Nocc], C[:,:Nocc])
             conv=np.sum((P_new-P_old)**2)**.5
 
             P_old=np.copy(P_new)

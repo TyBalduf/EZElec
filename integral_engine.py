@@ -18,11 +18,8 @@ def timer(func):
 
 #Constants
 ANG_TO_BOHR = 1.8897261245
-##Dictionary of element atomic numbers
-__ATOMIC_CHARGES={"H":1,"He":2,
-                  "Li":3,"Be":4,"B":5,"C":6,"N":7,"O":8,"F":9,"Ne":10}
 
-def initialize(geometry,basis_name):
+def initialize(molecule,basis_name):
     #Read saved basis info
     file=f"BasisSets\\{basis_name.lower()}.txt"
     with open(file) as f:
@@ -31,10 +28,8 @@ def initialize(geometry,basis_name):
     #Create list of basis function
     bas_funcs=[]
     ##Read through all atoms to get element and coordinates
-    for atom in geometry:
-        elem,*coord=atom
-        coord=[c*ANG_TO_BOHR for c in coord]
-        vals=basis_dict[elem]
+    for atom,coord in molecule:
+        vals=basis_dict[atom]
         ##Get coefficients, exponents, and shell of each contracted orbital
         for c,e,shell in zip(vals['coeffs'],vals["exponents"],vals["shells"]):
             shell=_expandShell(shell)
@@ -44,15 +39,6 @@ def initialize(geometry,basis_name):
                 bas_funcs.append(ba.Basis_Function(coord,**temp))
     return bas_funcs
 
-def elecCount(geometry,charge=0):
-    """Returns the number of electrons in a molecule"""
-    count=0
-    for atom in geometry:
-        elem,*_=atom
-        count+=__ATOMIC_CHARGES[elem]
-    count-=charge
-
-    return count
 
 def _expandShell(shell: str)->List[Tuple[int,int,int]]:
     """Convert label to ang momentum of all orbitals in that shell
@@ -67,11 +53,6 @@ def _expandShell(shell: str)->List[Tuple[int,int,int]]:
               }
     expanded=expansion[shell]
     return expanded
-
-def getCharges(geom: List, chargeValues: Dict = __ATOMIC_CHARGES) -> List:
-    charges=[chargeValues[g[0]] for g in geom]
-    return charges
-
 
 def formS(basis_funcs: List[ba.Basis_Function]):
     def temp(bra,ket):
@@ -109,20 +90,19 @@ def formL(basis_funcs):
     L=[l2-l1 for l1,l2 in zip(first,second)]
     return L
 
-def formNucAttract(basis_funcs,geom):
-    potentials=formPotential(basis_funcs,geom)
-    charges=getCharges(geom)
+def formNucAttract(basis_funcs,molec):
+    potentials=formPotential(basis_funcs,molec)
+    charges=molec.getCharges()
     V=np.einsum('i,ijk->jk',charges,potentials)
     return V
 
-def formPotential(basis_funcs,geom):
+def formPotential(basis_funcs,molec):
     nbasis=len(basis_funcs)
-    vals=np.zeros((len(geom),nbasis,nbasis))
+    vals=np.zeros((len(molec),nbasis,nbasis))
 
-    for c,coord in enumerate(geom):
-        cent=[val*ANG_TO_BOHR for val in coord[1:]]
+    for c,coord in enumerate(molec.coords):
         def attract(bra,ket):
-            return bra.Coulomb_1e(ket,cent)
+            return bra.Coulomb_1e(ket,coord)
         vals[c]=__formMat(basis_funcs,attract)
 
     return vals

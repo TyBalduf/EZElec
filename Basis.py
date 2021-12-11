@@ -90,8 +90,10 @@ def ObSa_1e(alpha:float, beta:float, x:float, i=0, j=0, t=0, x_c=None)->float:
     case of s-type overlap.
 
     :param alpha: bra exponent
+    :param beta: ket exponent
     :param x: Distance between bra and ket
-    :param i: Angular momentum
+    :param i: Angular momentum of bra
+    :param j: Angular momentum of ket
     :param t: Derivative/multipole order
     :param x_c: Center of charge (for multipole)
     :return: value of overlap integral
@@ -146,6 +148,9 @@ def ObSa_Coulomb(p: int, mu: int, bra_dist: Dist, ket_dist: Dist, nuc_dist: Dist
     :param mu: Product of bra-ket exponents, divided by p
     :param bra_dist: Distance from bra to combined Gaussian center
     :param bra_ang: Angular momentum of bra
+    :param ket_dist: Distance from ket to combined Gaussian center
+    :param ket_ang: Angular momentum of ket
+    :param nuc_dist: Distance between nuclei associated with bra and ket
     :param N: Boys' function order
     """
 
@@ -217,7 +222,7 @@ def ObSa_2e(expon: Exp_2e,dists: Dist_2e,momentums: Ang_2e,N=0)->float:
     q = c + d
 
     #Base case
-    if all(a==(0,0,0) for a in momentums):
+    if all(ang==(0,0,0) for ang in momentums):
         ##Form necessary exponent factors
         mu=a*b/p
         nu=c*d/q
@@ -297,7 +302,7 @@ def ObSa_2e(expon: Exp_2e,dists: Dist_2e,momentums: Ang_2e,N=0)->float:
 def Boys(n:int,x:float)->float:
     """Evaluates the Boys' functions
 
-    Uses the incomplete Gamma function to evaluate.
+    Expressed in terms of the incomplete Gamma function.
 
     :param n: order
     :param x: position
@@ -310,6 +315,11 @@ def Boys(n:int,x:float)->float:
 
 
 class ChargeDist:
+    """Class for storing charge distributions
+
+    Convenient for handling two electron integrals in chemist notation.
+    """
+
     def __init__(self,first: Basis_Function,second: Basis_Function,indices: typing.Tuple[int,int]):
         self.first=first
         self.second=second
