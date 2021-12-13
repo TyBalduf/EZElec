@@ -1,7 +1,7 @@
 # Functions to generate the basis and organize
 # the overlap, 1e-, and 2e- integrals.
 import json
-import Basis as ba
+from Basis import Basis_Function, ChargeDist
 import numpy as np
 from typing import List,Tuple,Dict
 import time
@@ -15,9 +15,6 @@ def timer(func):
         print(f"{func.__name__} took {t1-t0} seconds")
         return val
     return new_func
-
-#Constants
-ANG_TO_BOHR = 1.8897261245
 
 def initialize(molecule,basis_name):
     #Read saved basis info
@@ -36,7 +33,7 @@ def initialize(molecule,basis_name):
             for s in shell:
                 ##Generate basis function objects
                 temp={"coeffs":c,"exponents":e,"shell":s}
-                bas_funcs.append(ba.Basis_Function(coord,**temp))
+                bas_funcs.append(Basis_Function(coord,**temp))
     return bas_funcs
 
 
@@ -54,12 +51,14 @@ def _expandShell(shell: str)->List[Tuple[int,int,int]]:
     expanded=expansion[shell]
     return expanded
 
-def formS(basis_funcs: List[ba.Basis_Function]):
+def formS(basis_funcs: List[Basis_Function]):
+    """Forms the overlap matrix"""
     def temp(bra,ket):
         return bra.overlap(ket)
     return __formMat(basis_funcs,temp)
 
 def formT(basis_funcs):
+    """Forms the kinetic energy matrix"""
     def kinetic(bra,ket):
         return -.5*(bra.overlap(ket,deriv=(2,0,0))+
                     bra.overlap(ket,deriv=(0,2,0))+
@@ -68,18 +67,21 @@ def formT(basis_funcs):
     return __formMat(basis_funcs,kinetic)
 
 def formMu(basis_funcs):
+    """Forms the dipole matrices"""
     cart=((1,0,0),(0,1,0),(0,0,1))
     multi=3*[(True, True, True)]
     mu=__listMats(basis_funcs,cart,multi)
     return mu
 
 def formP(basis_funcs):
+    """Forms the momentum matrices"""
     cart = ((1,0,0),(0,1,0),(0,0,1))
     P=__listMats(basis_funcs,cart,phase=-1)
     P=[-p for p in P]
     return P
 
 def formL(basis_funcs):
+    """Forms the angular momentum matrices"""
     cart = ((0,1,1),(1,0,1),(1,1,0))
     multi =((False,False,True),(True,False,False),(False,True,False))
     first=__listMats(basis_funcs,cart,multi,phase=-1)
@@ -91,12 +93,14 @@ def formL(basis_funcs):
     return L
 
 def formNucAttract(basis_funcs,molec):
+    """Forms total nuclear attraction potential"""
     potentials=formPotential(basis_funcs,molec)
     charges=molec.getCharges()
     V=np.einsum('i,ijk->jk',charges,potentials)
     return V
 
 def formPotential(basis_funcs,molec):
+    """Forms the nuclear attraction potential matrices for each atom"""
     nbasis=len(basis_funcs)
     vals=np.zeros((len(molec),nbasis,nbasis))
 
@@ -108,7 +112,8 @@ def formPotential(basis_funcs,molec):
     return vals
 
 @timer
-def form2e(basis_funcs:List[ba.Basis_Function],thresh=1e-12):
+def form2e(basis_funcs:List[Basis_Function],thresh=1e-12):
+    """Forms the 2e-integrals for a given basis set"""
     nbasis=len(basis_funcs)
     tensor=np.zeros((nbasis,)*4)
 
@@ -141,14 +146,29 @@ def form2e(basis_funcs:List[ba.Basis_Function],thresh=1e-12):
 
 
 ##Utility functions
-def __formMat(basis_funcs,method,phase=1):
-    nbasis=len(basis_funcs)
-    mat=np.zeros((nbasis,nbasis))
+def mixedOverlap(old_funcs: List[Basis_Function],new_funcs: List[Basis_Function]):
+    """Calculates the mixed overlap between two basis sets"""
+    def temp(bra,ket):
+        return bra.overlap(ket)
+    return __formMat(old_funcs,temp,basis_funcs2=new_funcs)
 
-    for i,bra in enumerate(basis_funcs):
-        for j,ket in enumerate(basis_funcs[:i+1]):
-            mat[i,j]=method(bra,ket)
-            mat[j,i]=phase*mat[i,j]
+def __formMat(basis_funcs,method,phase=1,basis_funcs2=None):
+    nbasis=len(basis_funcs)
+
+    if basis_funcs2 is None:
+        mat = np.zeros((nbasis, nbasis))
+        for i,bra in enumerate(basis_funcs):
+            for j,ket in enumerate(basis_funcs[:i+1]):
+                mat[i,j]=method(bra,ket)
+                mat[j,i]=phase*mat[i,j]
+    else:
+        #For mixed integrals (currently only overlap)
+        nbasis2=len(basis_funcs2)
+        mat=np.zeros((nbasis,nbasis2))
+        for i,bra in enumerate(basis_funcs):
+            for j,ket in enumerate(basis_funcs2):
+                mat[i,j]=method(bra,ket)
+
     return mat
 
 def __listMats(basis_funcs,cart,multi=3*[(False,False,False)],phase=1):
@@ -164,7 +184,7 @@ def __formDistribs(basis_funcs):
     distribs=[]
     for i,mu in enumerate(basis_funcs):
         for j,nu in enumerate(basis_funcs[:i+1]):
-            distribs.append(ba.ChargeDist(mu,nu,(i,j)))
+            distribs.append(ChargeDist(mu,nu,(i,j)))
     return distribs
 
 

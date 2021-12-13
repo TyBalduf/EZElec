@@ -5,13 +5,48 @@ from scipy.linalg import sqrtm
 from Molecule import Molecule
 
 class SCF:
-    def __init__(self, geom, basis, charge=0, props=False):
-        self.molecule = Molecule(geom,charge)
-        self.basis={"name":basis,"functions":ie.initialize(self.molecule,basis)}
-        self.ints= self.genInts(properties=props)
-        self.E=None
-        self.C=None
-        self.epsilon=None
+    def __init__(self, geom, basis, charge=0, props=False,solve=True):
+        if isinstance(geom, Molecule):
+            self._molecule = geom
+        else:
+            self._molecule = Molecule(geom, charge)
+        self._basis={"name":basis, "functions":ie.initialize(self._molecule, basis)}
+        self._ints= self.genInts(properties=props)
+        self._E=None
+        self._C=None
+        self._epsilon=None
+        if solve:
+            self.solve()
+
+    @property
+    def molecule(self):
+        """Molecule object
+
+        Only readable, better to create a new SCF instance
+        if a new molecule is needed.
+        """
+        return self._molecule
+
+    @property
+    def basis(self):
+        return self._basis["name"]
+
+    @basis.setter
+    def basis(self, basis):
+        """Reset basis functions and integrals
+
+        If C is defined, project it onto the new basis.
+        """
+        old_funcs=self._basis["functions"]
+        self._basis={"name":basis, "functions":ie.initialize(self._molecule, basis)}
+        self._ints= self.genInts()
+
+        if self._C is not None:
+            mixedS=ie.mixedOverlap(self._basis["functions"],old_funcs)
+            newS=self._ints["S"]
+            newC=np.linalg.inv(newS)@mixedS@self._C
+            self._C=newC
+
 
     def genInts(self,properties=False):
         """
@@ -21,13 +56,13 @@ class SCF:
         as well.
         """
         #Generate list of basis functions
-        basis_funcs=self.basis["functions"]
+        basis_funcs=self._basis["functions"]
 
         intDict={}
         #Generate integrals from the basis function list
         intDict['S']=ie.formS(basis_funcs)
         intDict['T']=ie.formT(basis_funcs)
-        intDict['V']=ie.formNucAttract(basis_funcs,self.molecule)
+        intDict['V']=ie.formNucAttract(basis_funcs, self._molecule)
         intDict['Pi']=ie.form2e(basis_funcs)
 
         if properties:
@@ -45,13 +80,13 @@ class SCF:
         alpha spin. This should functionally when passing in a
         guess density.
         """
-        T=self.ints['T']
-        V=self.ints['V']
-        S=self.ints['S']
-        Pi=self.ints['Pi']
+        T=self._ints['T']
+        V=self._ints['V']
+        S=self._ints['S']
+        Pi=self._ints['Pi']
 
         # Determine number of occupied orbitals
-        Nocc = self.molecule.nelec//2
+        Nocc = self._molecule.nelec // 2
         #Form core Hamiltonian
         h=T-V
 
@@ -61,13 +96,15 @@ class SCF:
         i=0
         conv=np.inf
         # Form initial density matrix
-        if guess is None:
-            P_old = np.zeros((len(S),len(S)))
+        if guess is not None:
+            P_old = np.array(guess)
+        elif self._C is not None:
+            P_old = 2*np.einsum('pi,qi->pq', self._C[:,:Nocc], self._C[:,:Nocc])
         else:
-            P_old=np.array(guess)
+            P_old = np.zeros((len(S), len(S)))
 
         #Calculate nuclear repulsion energy
-        E_nuc=self.molecule.getNucRepulsion()
+        E_nuc=self._molecule.getNucRepulsion()
 
         #SCF loop
         while (i<max_iter and conv>thresh):
@@ -79,7 +116,7 @@ class SCF:
             E=np.einsum('ij,ij->',P_old,.5*(F+h))+E_nuc
             F=X.T@F@X
             e,C=np.linalg.eigh(F)
-            print(E)
+            print(f"Current energy:{E}")
 
             #Unorthogonalize and form new density matrix
             C=X@C
@@ -90,7 +127,11 @@ class SCF:
             print(f"Current RMSD of Density= {conv}")
             i+=1
 
-        self.E=E
-        self.C=C
-        self.epsilon=e
+        print("----------------------------------------------------")
+        print(f"SCF converged in {i} iterations")
+        print(f"SCF energy= {E}")
+        print(f"SCF RMSD of Density= {conv}")
+        self._E=E
+        self._C=C
+        self._epsilon=e
         return E,C
