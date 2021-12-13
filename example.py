@@ -18,7 +18,7 @@ mol=Molecule(geom,charge=1)
 
 solution=SCF(**params)
 #P=[[0.95554*2, 0.03986*2],[0.03986*2,0.00166*2]]
-E,C=solution.solve()#guess=P)
+#E,C=solution.solve()#guess=P)
 
 #Test updating basis and using old as guess
 solution.basis="sto-3g"

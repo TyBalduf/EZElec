@@ -45,8 +45,14 @@ class SCF:
             mixedS=ie.mixedOverlap(self._basis["functions"],old_funcs)
             newS=self._ints["S"]
             newC=np.linalg.inv(newS)@mixedS@self._C
+            #Orthogonalize newC with QR decomposition
+            newC,_=np.linalg.qr(newC)
             self._C=newC
 
+    @property
+    def ints(self):
+        """Integrals dictionary"""
+        return self._ints
 
     def genInts(self,properties=False):
         """
@@ -73,7 +79,7 @@ class SCF:
         return intDict
 
 
-    def solve(self,max_iter=100,thresh=1e-8,guess=None):
+    def solve(self,max_iter=100,thresh=1e-8,guess=None,debug=False):
         """Solves the SCF equations.
 
         The Fock and density matrices are the total ones, not just the
@@ -116,7 +122,6 @@ class SCF:
             E=np.einsum('ij,ij->',P_old,.5*(F+h))+E_nuc
             F=X.T@F@X
             e,C=np.linalg.eigh(F)
-            print(f"Current energy:{E}")
 
             #Unorthogonalize and form new density matrix
             C=X@C
@@ -124,13 +129,16 @@ class SCF:
             conv=np.sum((P_new-P_old)**2)**.5
 
             P_old=np.copy(P_new)
-            print(f"Current RMSD of Density= {conv}")
+            if debug:
+                print(f"Current energy:{E}")
+                print(f"Current RMSD of Density= {conv}")
             i+=1
 
         print("----------------------------------------------------")
         print(f"SCF converged in {i} iterations")
         print(f"SCF energy= {E}")
-        print(f"SCF RMSD of Density= {conv}")
+        print(f"RMSD of Density= {conv}")
+        print("----------------------------------------------------\n")
         self._E=E
         self._C=C
         self._epsilon=e
