@@ -1,5 +1,7 @@
-from Methods import SCF
-from Molecule import Molecule
+import ez_elec
+
+#from ez_elec.Methods import SCF
+#from ez_elec.Molecule import Molecule
 
 #geom=[['H',0.0,0.0,-0.375],['H',0.0,0.0,0.375],['H',0.0,-0.375,0.0],['H',0.0,0.375,0.0]]
 #geom=[['O',0.0,0.0,-1.375],['O',0.0,0.0,1.375]]
@@ -11,12 +13,13 @@ H 0.0 0.0 0.774292095
 """
 
 params={'geom':geom,
-        'basis':"test",
+        'basis':"trial",
         "charge":1}
 
-mol=Molecule(geom,charge=1)
+mol=ez_elec.Molecule(geom, charge=1)
+print(mol.coords)
 
-solution=SCF(**params)
+solution=ez_elec.SCF(**params)
 #P=[[0.95554*2, 0.03986*2],[0.03986*2,0.00166*2]]
 #E,C=solution.solve()#guess=P)
 

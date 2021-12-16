@@ -1,9 +1,9 @@
 # Functions to generate the basis and organize
 # the overlap, 1e-, and 2e- integrals.
 import json
-from Basis import Basis_Function, ChargeDist
+from ez_elec.basis import Basis_Function, ChargeDist
 import numpy as np
-from typing import List,Tuple,Dict
+from typing import List,Tuple
 import time
 
 def timer(func):

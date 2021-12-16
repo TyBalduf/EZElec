@@ -1,13 +1,15 @@
 import numpy as np
+from periodictable import elements
 
 #Constants
 TO_BOHR={'bohr':1,'nm':1.8897261245e1,'pm':1.8897261245e-2,'ang':1.8897261245}
 ##Dictionary of element atomic numbers
-_ATOMIC_CHARGES={"H":1,"He":2,
-                  "Li":3,"Be":4,"B":5,"C":6,"N":7,"O":8,"F":9,"Ne":10}
+ATOMIC_CHARGES={elem.symbol:elem.number for elem in elements}
+##Dictionary of element atomic masses
+ATOMIC_MASSES={elem.symbol:elem.mass for elem in elements}
 
 class Molecule:
-    def __init__(self, geom, charge, units="ang"):
+    def __init__(self, geom, charge=0, units="ang"):
         atoms,coords=self._convertTo(geom,units=units)
         self._atoms=atoms
         self._coords=coords
@@ -82,9 +84,9 @@ class Molecule:
 
     def __copy__(self):
         geom=self._convertFrom()
-        return Molecule(geom,self.charge,units=self.units)
+        return Molecule(geom, self.charge, units=self.units)
 
-    def getCharges(self, chargeValues = _ATOMIC_CHARGES):
+    def getCharges(self, chargeValues = ATOMIC_CHARGES):
         """Returns a list of the charges of the atoms in the molecule"""
         charges = [chargeValues[a] for a in self.atoms]
         return charges
@@ -92,6 +94,9 @@ class Molecule:
     def elecCount(self):
         """Returns the number of electrons in a molecule"""
         count = sum(self.getCharges())-self.charge
+        if count < 0:
+            raise ValueError(f"A charge of {self.charge} leads to a negative"
+                             " number of electrons")
         return count
 
     def getNucRepulsion(self):

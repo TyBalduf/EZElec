@@ -1,8 +1,8 @@
 # Performs RHF
-import integral_engine as ie
+import ez_elec.integral_engine as ie
 import numpy as np
 from scipy.linalg import sqrtm
-from Molecule import Molecule
+from ez_elec.molecule import Molecule
 
 class SCF:
     def __init__(self, geom, basis, charge=0, props=False,solve=True):
