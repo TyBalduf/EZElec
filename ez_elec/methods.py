@@ -6,6 +6,13 @@ from ez_elec.molecule import Molecule
 
 class SCF:
     def __init__(self, geom, basis, charge=0, props=False,solve=True):
+        """Forms and stores SCF intermediates for a given molecule/basis
+
+        Using the given molecule (or geometry and charge), forms the basis
+        functions and the 1e/2e integrals need for the SCF. With prop, will
+        also form the dipole and linear/angular momentum integrals. Solve
+        starts the SCF iterations immediately after the object is formed.
+        """
         if isinstance(geom, Molecule):
             self._molecule = geom
         else:
@@ -20,7 +27,7 @@ class SCF:
 
     @property
     def molecule(self):
-        """Molecule object
+        """Molecule object for the SCF
 
         Only readable, better to create a new SCF instance
         if a new molecule is needed.
@@ -35,7 +42,7 @@ class SCF:
     def basis(self, basis):
         """Reset basis functions and integrals
 
-        If C is defined, project it onto the new basis.
+        If C is defined, it is projected onto the new basis.
         """
         old_funcs=self._basis["functions"]
         self._basis={"name":basis, "functions":ie.initialize(self._molecule, basis)}

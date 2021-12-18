@@ -13,13 +13,14 @@ H 0.0 0.0 0.774292095
 """
 
 params={'geom':geom,
-        'basis':"trial",
+        'basis':"sto-3g",
         "charge":1}
 
 mol=ez_elec.Molecule(geom, charge=1)
 print(mol.coords)
 
 solution=ez_elec.SCF(**params)
+print(solution.ints)
 #P=[[0.95554*2, 0.03986*2],[0.03986*2,0.00166*2]]
 #E,C=solution.solve()#guess=P)
 

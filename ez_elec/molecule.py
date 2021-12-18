@@ -54,7 +54,7 @@ class Molecule:
 
         #Handle input string, each line is a separate atom
         if isinstance(geom,str):
-            geom=geom.strip("\n")
+            geom=geom.strip("\n ")
             geom = [g.split() for g in geom.split('\n')]
 
         for atom in geom:

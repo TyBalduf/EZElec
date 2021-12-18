@@ -5,6 +5,9 @@ from ez_elec.basis import Basis_Function, ChargeDist
 import numpy as np
 from typing import List,Tuple
 import time
+import pkg_resources
+
+BASIS_DIRECTORY="BasisSets"
 
 def timer(func):
     """Prints the time it took a function to run"""
@@ -17,10 +20,16 @@ def timer(func):
     return new_func
 
 def initialize(molecule,basis_name):
+    """Create a list of the basis functions for a molecule
+
+    Reads the json file for the given basis as a dict,
+    for each atom in the molecule grabs the appropriate parameters,
+    passes these to the Basis_Function constructor.
+    """
     #Read saved basis info
-    file=f"BasisSets\\{basis_name.lower()}.txt"
-    with open(file) as f:
-        basis_dict=json.loads(f.read())
+    file=f"{BASIS_DIRECTORY}\\{basis_name.lower()}.json"
+    stream = pkg_resources.resource_stream(__name__, file).read()
+    basis_dict=json.loads(stream)
 
     #Create list of basis function
     bas_funcs=[]
@@ -113,7 +122,11 @@ def formPotential(basis_funcs,molec):
 
 @timer
 def form2e(basis_funcs:List[Basis_Function],thresh=1e-12):
-    """Forms the 2e-integrals for a given basis set"""
+    """Forms the 2e-integrals for a given basis set
+
+    Thresh is the cutoff to exclude an integral based
+    on the Cauchy-Schwarz inequality.
+    """
     nbasis=len(basis_funcs)
     tensor=np.zeros((nbasis,)*4)
 

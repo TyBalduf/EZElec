@@ -60,6 +60,10 @@ class Basis_Function:
         return self.N*other.N*value
 
     def Coulomb_1e(self,other,nuc_center):
+        """Evaluate electron-nuclear attraction primitive integrals
+
+        Uses the Coulomb variant of the Obara-Saika recurrence.
+        """
         value = 0
         nuc_center=np.array(nuc_center)
         # Loop over each contraction
@@ -107,6 +111,8 @@ def ObSa_1e(alpha:float, beta:float, x:float, i=0, j=0, t=0, x_c=None)->float:
         return np.sqrt(np.pi/p)*np.exp(-mu*x**2)
     elif i<0 or j<0 or t<0:
         return 0.0
+    #Reduce order of derivative/multipole, creates
+    #terms with increased and decreased bra momentum
     elif t>0:
         if x_c is None:
             upper= 2 * alpha * ObSa_1e(alpha, beta, x, i + 1, j, t-1)
@@ -117,6 +123,7 @@ def ObSa_1e(alpha:float, beta:float, x:float, i=0, j=0, t=0, x_c=None)->float:
                    j * ObSa_1e(alpha, beta, x, i, j-1, t-1, x_c) +
                    (t-1) * ObSa_1e(alpha, beta, x, i, j, t-2, x_c))/(2*p)
         return upper+lower
+    #Decrease bra momentum
     elif i>0:
         upper= (-beta/p) * x * ObSa_1e(alpha, beta, x, i - 1, j, t, x_c)
         lower= ((i-1) * ObSa_1e(alpha, beta, x, i - 2, j, t, x_c) +
@@ -126,6 +133,7 @@ def ObSa_1e(alpha:float, beta:float, x:float, i=0, j=0, t=0, x_c=None)->float:
         else:
             lower+= t*ObSa_1e(alpha, beta, x, i-1, j, t-1, x_c)/(2*p)
         return upper+lower
+    #Decrease ket momentum
     elif j>0:
         upper= (alpha/p) * x * ObSa_1e(alpha, beta, x, i, j-1, t, x_c)
         lower= (i * ObSa_1e(alpha, beta, x, i - 1, j - 1, t, x_c) +
